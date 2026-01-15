@@ -73,8 +73,7 @@ const handleProductWise = async (coupon, items) => {
 function handleBxGy(coupon, cartItems) {
   let cartMap = {};
   let discount = 0;
-  let freeItems = [];
-  const coupon_details = coupon.details;
+  const couponDetails = coupon.details;
   // Step 1: Build cart map
   for (const item of cartItems) {
     cartMap[item.product_id] = {
@@ -83,49 +82,87 @@ function handleBxGy(coupon, cartItems) {
     };
   }
 
-  // Step 2: Sum total eligible BUY quantity
-  let totalEligibleQty = 0;
+  // Step 2: Calculate total BUY quantity (COMBINATION)
+  let totalBuyQty = 0;
 
-  for (const buy of coupon_details.buy_products) {
+  for (const buy of couponDetails.buy_products) {
     if (cartMap[buy.product_id]) {
-      totalEligibleQty += cartMap[buy.product_id].quantity;
+      totalBuyQty += cartMap[buy.product_id].quantity;
     }
   }
 
-  // If no eligible quantity, coupon not applicable
-  if (totalEligibleQty === 0) {
+  if (totalBuyQty === 0) {
     return { discount: 0, freeItems: [] };
   }
+  console.log(`totalBuyQty: ${totalBuyQty}`);
 
-  // Step 3: Determine group quantity (Bx)
-  const groupQty = coupon_details.buy_products[0].quantity;
+  // Step 3: Calculate applications
+  const groupQty = couponDetails.buy_products[0].quantity; // e.g. Buy 3
+  let applications = Math.floor(totalBuyQty / groupQty);
 
-  let applications = Math.floor(totalEligibleQty / groupQty);
-
-  // Step 4: Apply repetition limit
-  if (coupon_details.repition_limit) {
-    applications = Math.min(applications, coupon_details.repition_limit);
+  if (couponDetails.repition_limit) {
+    applications = Math.min(applications, couponDetails.repition_limit);
   }
 
   if (applications <= 0) {
     return { discount: 0, freeItems: [] };
   }
 
-  // Step 5: Calculate FREE products
-  for (const get of coupon_details.get_products) {
-    const freeQty = get.quantity * applications;
+  // Step 4: Max free quantity allowed
+  const maxFreeQty =
+    applications *
+    couponDetails.get_products.reduce((sum, g) => sum + g.quantity, 0);
+  console.log(`maxFreeQty: ${maxFreeQty}`);
 
-    if (cartMap[get.product_id]) {
-      const price = cartMap[get.product_id].price;
-      discount += freeQty * price;
+  // Step 5: Collect GET products from cart
+  let getCandidates = [];
+
+  for (const get of couponDetails.get_products) {
+    const cartItem = cartMap[get.product_id];
+    if (cartItem && cartItem.quantity > 0) {
+      getCandidates.push({
+        product_id: get.product_id,
+        quantity: cartItem.quantity,
+        price: cartItem.price,
+      });
     }
+  }
+
+  // Step 6: Sort GET items by price (DESC)
+  getCandidates.sort((a, b) => b.price - a.price);
+
+  for (const item of getCandidates) {
+    logger.info(item);
+  }
+  if (getCandidates.length === 0) {
+    return { discount: 0, freeItems: [] };
+  }
+
+  let remainingFreeQty = maxFreeQty;
+  let freeItems = [];
+
+  for (const item of getCandidates) {
+    if (remainingFreeQty <= 0) break;
+
+    const freeQty = Math.min(item.quantity, remainingFreeQty);
+
+    discount += freeQty * item.price;
+    remainingFreeQty -= freeQty;
 
     freeItems.push({
-      product_id: get.product_id,
+      product_id: item.product_id,
       quantity: freeQty,
     });
   }
+  console.log(`freeItems: ${freeItems.rows}`);
+  console.log(`discount: ${discount}`);
 
+  //   return {
+  //     discount,
+  //     freeItems,
+  //     applications,
+  //     maxFreeQty
+  //   };
   return discount;
 }
 
@@ -144,12 +181,20 @@ const getApplicableCoupons = async (req, res) => {
         message: "no item in cart",
       });
     }
+    for (item of cart_items.items) {
+      if (item.price == 0) {
+        return res.status(400).send({ msg: "item can not have price = 0" });
+      }
+      if (item.quantity == 0) {
+        return res.status(400).send({ msg: "item can not have quantity = 0" });
+      }
+    }
     const applicableCoupons = await findApplicableCoupons(
       coupons.rows,
       cart_items
     );
 
-    return res.json({ applicable_coupons: applicableCoupons });
+    return res.status(200).send({ applicable_coupons: applicableCoupons });
   } catch (error) {
     logger.error(error);
     return res.status(500).json({ error: "Failed to evaluate coupons" });
