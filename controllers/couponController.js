@@ -12,7 +12,7 @@ const createCoupon = async (req, res) => {
       type
     );
     if (checkTypeValidilty.isValid == false) {
-      res.status(400).send({ error: checkTypeValidilty.error });
+      return res.status(400).send({ error: checkTypeValidilty.error });
     }
     await client.query("BEGIN");
 

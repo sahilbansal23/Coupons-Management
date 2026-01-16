@@ -29,8 +29,6 @@ const findApplicableCoupons = async (coupons, cart) => {
         break;
 
       case "bxgy":
-        console.log("git bxgy");
-
         discount = await handleBxGy(coupon, cart.items);
         break;
 
@@ -105,7 +103,7 @@ async function handleBxGy(coupon, cartItems) {
   }
 
   if (applications <= 0) {
-    return { discount: 0, freeItems: [] };
+    return 0;
   }
 
   // Step 4: Max free quantity allowed
@@ -130,12 +128,8 @@ async function handleBxGy(coupon, cartItems) {
 
   // Step 6: Sort GET items by price (DESC)
   getCandidates.sort((a, b) => b.price - a.price);
-
-  for (const item of getCandidates) {
-    logger.info(item);
-  }
   if (getCandidates.length === 0) {
-    return { discount: 0, freeItems: [] };
+    return 0;
   }
 
   let remainingFreeQty = maxFreeQty;
@@ -154,8 +148,7 @@ async function handleBxGy(coupon, cartItems) {
       quantity: freeQty,
     });
   }
-  console.log(`freeItems: ${freeItems.rows}`);
-  console.log(`discount: ${discount}`);
+  // return total numeric discount for applicability check
 
   //   return {
   //     discount,
@@ -174,19 +167,30 @@ const getApplicableCoupons = async (req, res) => {
       currentDateStamp,
     ]);
     const cart_items = req.body.cart;
-    console.log(coupons.rows);
 
-    if (cart_items.length == 0) {
-      res.status(400).send({
-        message: "no item in cart",
-      });
+    // basic cart validation
+    if (
+      !cart_items ||
+      !Array.isArray(cart_items.items) ||
+      cart_items.items.length === 0
+    ) {
+      return res
+        .status(400)
+        .send({
+          message: "cart is required and must contain at least one item",
+        });
     }
-    for (item of cart_items.items) {
-      if (item.price == 0) {
-        return res.status(400).send({ msg: "item can not have price = 0" });
+
+    for (const item of cart_items.items) {
+      if (typeof item.price !== "number" || item.price <= 0) {
+        return res
+          .status(400)
+          .send({ msg: "each item must have a positive numeric price" });
       }
-      if (item.quantity == 0) {
-        return res.status(400).send({ msg: "item can not have quantity = 0" });
+      if (typeof item.quantity !== "number" || item.quantity <= 0) {
+        return res
+          .status(400)
+          .send({ msg: "each item must have a positive numeric quantity" });
       }
     }
     const applicableCoupons = await findApplicableCoupons(
@@ -252,24 +256,29 @@ const applyCouponToCart = async (coupon, cart) => {
   }
 };
 
-const applyCartWise = (coupon, items, cartTotal) => {
-  const { threshold, discount } = coupon.details;
+const applyCartWise = async (coupon, items, cartTotal) => {
+  try {
+    const { threshold, discount } = coupon.details;
 
-  if (cartTotal < threshold) {
-    throw new Error("Coupon not applicable for this cart");
+    if (cartTotal < threshold) {
+      throw new Error("Coupon not applicable for this cart");
+    }
+
+    const totalDiscount = (cartTotal * discount) / 100;
+
+    // Distribute discount proportionally
+    for (const item of items) {
+      const itemTotal = item.price * item.quantity;
+      const itemDiscount = (itemTotal / cartTotal) * totalDiscount;
+
+      item.total_discount = Number(itemDiscount.toFixed(2));
+    }
+
+    return Number(totalDiscount.toFixed(2));
+  } catch (error) {
+    logger.error(error);
+    throw new Error(error);
   }
-
-  const totalDiscount = (cartTotal * discount) / 100;
-
-  // Distribute discount proportionally
-  for (const item of items) {
-    const itemTotal = item.price * item.quantity;
-    const itemDiscount = (itemTotal / cartTotal) * totalDiscount;
-
-    item.total_discount = Number(itemDiscount.toFixed(2));
-  }
-
-  return Number(totalDiscount.toFixed(2));
 };
 
 const applyProductWise = (coupon, items) => {
@@ -349,9 +358,26 @@ const applyCoupon = async (req, res) => {
     if (!couponResult.rows.length) {
       return res.status(404).send({ error: "Coupon not found" });
     }
-
     const coupon = couponResult.rows[0];
+    const currentDateStamp = Date.now();
+
+    // check active
+    if (!coupon.is_active) {
+      return res.status(400).send({ error: "Coupon is not active" });
+    }
+
+    // check expiry (expiry_at stored as epoch ms)
+    if (coupon.expiry_at != null && coupon.expiry_at < currentDateStamp) {
+      return res.status(400).send({ error: "Coupon has expired" });
+    }
+
     const cart = req.body.cart;
+
+    if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
+      return res
+        .status(400)
+        .send({ error: "cart is required and must contain at least one item" });
+    }
 
     const result = await applyCouponToCart(coupon, cart);
 

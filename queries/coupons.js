@@ -50,13 +50,6 @@ const deactivateCoupon = `
       updated_at = $2
     WHERE id = $1;
   `;
-
-const getActiveNonExpiredCoupons = `
-    SELECT *
-    FROM coupons
-    WHERE is_active = true
-      AND (expiry_at IS NULL OR expiry_at > NOW());
-  `;
 const getCouponsByType = `
     SELECT id,
       type,
@@ -92,7 +85,6 @@ module.exports = {
   getCouponById,
   updateCoupon,
   deactivateCoupon,
-  getActiveNonExpiredCoupons,
   getCouponsByType,
   getAllCouponsNotExpire,
 };
