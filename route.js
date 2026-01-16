@@ -11,6 +11,6 @@ router.put("/coupons/:id", couponController.updateCoupon);
 router.delete("/coupons/:id", couponController.deleteCoupon);
 
 router.post("/applicable-coupons", applyCouponController.getApplicableCoupons);
-// router.post("/apply-coupon/:id", applyCouponController.applyCoupon);
+router.post("/apply-coupon/:id", applyCouponController.applyCoupon);
 
 module.exports = router;

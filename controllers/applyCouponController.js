@@ -70,7 +70,7 @@ const handleProductWise = async (coupon, items) => {
   return (productTotal * discount) / 100;
 };
 
-function handleBxGy(coupon, cartItems) {
+async function handleBxGy(coupon, cartItems) {
   let cartMap = {};
   let discount = 0;
   const couponDetails = coupon.details;
@@ -202,6 +202,169 @@ const getApplicableCoupons = async (req, res) => {
     client.release();
   }
 };
+
+const cloneItems = (items) =>
+  items.map((item) => ({
+    ...item,
+    total_discount: 0,
+  }));
+
+const findItem = (items, productId) =>
+  items.find((i) => i.product_id === productId);
+
+const applyCouponToCart = async (coupon, cart) => {
+  try {
+    const items = cloneItems(cart.items);
+    const cartTotal = calculateCartTotal(items);
+
+    let totalDiscount = 0;
+
+    switch (coupon.type) {
+      case "cart-wise":
+        totalDiscount = await applyCartWise(coupon, items, cartTotal);
+        break;
+
+      case "product-wise":
+        totalDiscount = await applyProductWise(coupon, items);
+        break;
+
+      case "bxgy":
+        totalDiscount = await applyBxGy(coupon, items);
+        break;
+
+      default:
+        throw new Error("Unsupported coupon type");
+    }
+
+    const finalPrice = cartTotal - totalDiscount;
+
+    return {
+      updated_cart: {
+        items,
+        total_price: cartTotal,
+        total_discount: totalDiscount,
+        final_price: finalPrice,
+      },
+    };
+  } catch (error) {
+    logger.error(error);
+    throw new Error(error);
+  }
+};
+
+const applyCartWise = (coupon, items, cartTotal) => {
+  const { threshold, discount } = coupon.details;
+
+  if (cartTotal < threshold) {
+    throw new Error("Coupon not applicable for this cart");
+  }
+
+  const totalDiscount = (cartTotal * discount) / 100;
+
+  // Distribute discount proportionally
+  for (const item of items) {
+    const itemTotal = item.price * item.quantity;
+    const itemDiscount = (itemTotal / cartTotal) * totalDiscount;
+
+    item.total_discount = Number(itemDiscount.toFixed(2));
+  }
+
+  return Number(totalDiscount.toFixed(2));
+};
+
+const applyProductWise = (coupon, items) => {
+  const { product_id, discount } = coupon.details;
+
+  const item = findItem(items, product_id);
+  if (!item) {
+    throw new Error("Coupon not applicable for this cart");
+  }
+
+  const productTotal = item.price * item.quantity;
+  const totalDiscount = (productTotal * discount) / 100;
+
+  item.total_discount = Number(totalDiscount.toFixed(2));
+
+  return Number(totalDiscount.toFixed(2));
+};
+
+const applyBxGy = (coupon, items) => {
+  const { buy_products, get_products, repition_limit } = coupon.details;
+
+  let cartMap = {};
+  for (const item of items) {
+    cartMap[item.product_id] = item;
+  }
+
+  // Step 1: count total buy qty
+  let totalBuyQty = 0;
+  for (const buy of buy_products) {
+    if (cartMap[buy.product_id]) {
+      totalBuyQty += cartMap[buy.product_id].quantity;
+    }
+  }
+
+  if (totalBuyQty === 0) {
+    throw new Error("Coupon not applicable for this cart");
+  }
+
+  const groupQty = buy_products[0].quantity;
+  let applications = Math.floor(totalBuyQty / groupQty);
+
+  if (repition_limit) {
+    applications = Math.min(applications, repition_limit);
+  }
+
+  if (applications <= 0) {
+    throw new Error("Coupon not applicable for this cart");
+  }
+
+  let totalDiscount = 0;
+
+  // Step 2: apply free items (capped by availability)
+  for (const get of get_products) {
+    const item = cartMap[get.product_id];
+    if (!item) continue;
+
+    const expectedFreeQty = get.quantity * applications;
+    const actualFreeQty = Math.min(expectedFreeQty, item.quantity);
+
+    const discount = actualFreeQty * item.price;
+
+    item.quantity += actualFreeQty; // extra free items
+    item.total_discount += discount;
+    totalDiscount += discount;
+  }
+
+  return totalDiscount;
+};
+
+const applyCoupon = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const couponResult = await client.query(couponQueries.getCouponById, [
+      req.params.id,
+    ]);
+
+    if (!couponResult.rows.length) {
+      return res.status(404).send({ error: "Coupon not found" });
+    }
+
+    const coupon = couponResult.rows[0];
+    const cart = req.body.cart;
+
+    const result = await applyCouponToCart(coupon, cart);
+
+    return res.status(200).send(result);
+  } catch (error) {
+    logger.error(error.message);
+    return res.status(400).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getApplicableCoupons,
+  applyCoupon,
 };
