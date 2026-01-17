@@ -1,0 +1,389 @@
+{
+  "info": {
+    "_postman_id": "4bd32b45-24c1-4255-af5a-1663fcb84484",
+    "name": "Coupons",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "25660010",
+    "_collection_link": "https://go.postman.co/collection/25660010-4bd32b45-24c1-4255-af5a-1663fcb84484?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Create",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"type\": \"product-wise\",\n    \"details\": {\n        \"product_id\": 4,\n        \"discount\": 20\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/coupons",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "coupons"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get coupons",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/coupons",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "coupons"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "coupon by id",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"type\": \"cart-wise\",\n    \"details\": {\n        \"threshold\": 100,\n        \"discount\": 10\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/coupons/:id",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "coupons",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "01KEY45F5PN9MP7482AV743DCF"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "update",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"id\": \"01KEY45F5PN9MP7482AV743DCF\",\n    \"type\": \"cart-wise\",\n    \"details\": {\n        \"threshold\": 600,\n        \"discount\": 10\n    },\n    \"is_active\": false,\n    \"threshold_qty\": null,\n    \"expiry_at\": null,\n    \"created_at\": \"1768390048950\",\n    \"updated_at\": \"1768390048950\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/coupons/:id",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "coupons",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "01KEY45F5PN9MP7482AV743DCF"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"type\": \"cart-wise\",\n    \"details\": {\n        \"threshold\": 100,\n        \"discount\": 10\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/coupons/:id",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "coupons",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "01KEY45F5PN9MP7482AV743DCF"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "applicable-coupon",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"cart\": {\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"quantity\": 2,\n                \"price\": 50\n            }, // Product X \n            {\n                \"product_id\": 2,\n                \"quantity\": 2,\n                \"price\": 30\n            }, // Product Y \n            {\n                \"product_id\": 3,\n                \"quantity\": 5,\n                \"price\": 125\n            }, // Product Z \n            {\n                \"product_id\": 6,\n                \"quantity\": 3,\n                \"price\": 25\n            },// Product Z \n            {\n                \"product_id\": 7,\n                \"quantity\": 2,\n                \"price\": 30\n            }\n        ]\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/applicable-coupons",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "applicable-coupons"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "apply coupon",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"cart\": {\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"quantity\": 2,\n                \"price\": 50\n            }, // Product X \n            {\n                \"product_id\": 2,\n                \"quantity\": 2,\n                \"price\": 30\n            }, // Product Y \n            {\n                \"product_id\": 3,\n                \"quantity\": 5,\n                \"price\": 125\n            }, // Product Z \n            {\n                \"product_id\": 6,\n                \"quantity\": 3,\n                \"price\": 25\n            },// Product Z \n            {\n                \"product_id\": 7,\n                \"quantity\": 2,\n                \"price\": 30\n            }\n        ]\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/apply-coupon/:id",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "4000",
+          "path": [
+            "api",
+            "apply-coupon",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "01KEY45F5PN9MP7482AV743DCF"
+            }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "apply coupon",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cart\": {\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"quantity\": 2,\n                \"price\": 50\n            }, // Product X \n            {\n                \"product_id\": 2,\n                \"quantity\": 2,\n                \"price\": 30\n            }, // Product Y \n            {\n                \"product_id\": 3,\n                \"quantity\": 5,\n                \"price\": 125\n            }, // Product Z \n            {\n                \"product_id\": 6,\n                \"quantity\": 3,\n                \"price\": 25\n            },// Product Z \n            {\n                \"product_id\": 7,\n                \"quantity\": 2,\n                \"price\": 30\n            }\n        ]\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:4000/api/apply-coupon/:id",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "4000",
+              "path": [
+                "api",
+                "apply-coupon",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "01KEY45F5PN9MP7482AV743DCF"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "391"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"187-H9PluOCMh8A7L10n+Fhrd0PjJQo\""
+            },
+            {
+              "key": "Date",
+              "value": "Sat, 17 Jan 2026 11:00:23 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"updated_cart\": {\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"quantity\": 2,\n                \"price\": 50,\n                \"total_discount\": 10\n            },\n            {\n                \"product_id\": 2,\n                \"quantity\": 2,\n                \"price\": 30,\n                \"total_discount\": 6\n            },\n            {\n                \"product_id\": 3,\n                \"quantity\": 5,\n                \"price\": 125,\n                \"total_discount\": 62.5\n            },\n            {\n                \"product_id\": 6,\n                \"quantity\": 3,\n                \"price\": 25,\n                \"total_discount\": 7.5\n            },\n            {\n                \"product_id\": 7,\n                \"quantity\": 2,\n                \"price\": 30,\n                \"total_discount\": 6\n            }\n        ],\n        \"total_price\": 920,\n        \"total_discount\": 92,\n        \"final_price\": 828\n    }\n}"
+        },
+        {
+          "name": "apply coupon",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cart\": {\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"quantity\": 2,\n                \"price\": 50\n            }, // Product X \n            {\n                \"product_id\": 2,\n                \"quantity\": 2,\n                \"price\": 30\n            }, // Product Y \n            {\n                \"product_id\": 3,\n                \"quantity\": 5,\n                \"price\": 125\n            }, // Product Z \n            {\n                \"product_id\": 6,\n                \"quantity\": 3,\n                \"price\": 25\n            },// Product Z \n            {\n                \"product_id\": 7,\n                \"quantity\": 2,\n                \"price\": 30\n            }\n        ]\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:4000/api/apply-coupon/:id",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "4000",
+              "path": [
+                "api",
+                "apply-coupon",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "01KEYXFFRR3FS6WNB0JPCCM913"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "388"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"184-lHjDuE6tX+10gAwmwqnxk7DpH5I\""
+            },
+            {
+              "key": "Date",
+              "value": "Sat, 17 Jan 2026 11:03:03 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"updated_cart\": {\n        \"items\": [\n            {\n                \"product_id\": 1,\n                \"quantity\": 2,\n                \"price\": 50,\n                \"total_discount\": 0\n            },\n            {\n                \"product_id\": 2,\n                \"quantity\": 2,\n                \"price\": 30,\n                \"total_discount\": 0\n            },\n            {\n                \"product_id\": 3,\n                \"quantity\": 6,\n                \"price\": 125,\n                \"total_discount\": 125\n            },\n            {\n                \"product_id\": 6,\n                \"quantity\": 3,\n                \"price\": 25,\n                \"total_discount\": 0\n            },\n            {\n                \"product_id\": 7,\n                \"quantity\": 2,\n                \"price\": 30,\n                \"total_discount\": 0\n            }\n        ],\n        \"total_price\": 920,\n        \"total_discount\": 125,\n        \"final_price\": 795\n    }\n}"
+        }
+      ]
+    }
+  ]
+}
