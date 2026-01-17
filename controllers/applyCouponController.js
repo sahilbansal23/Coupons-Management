@@ -101,15 +101,16 @@ async function handleBxGy(coupon, cartItems) {
   if (couponDetails.repition_limit) {
     applications = Math.min(applications, couponDetails.repition_limit);
   }
-
+  logger.info(`applications: ${applications}`);
   if (applications <= 0) {
     return 0;
   }
 
   // Step 4: Max free quantity allowed
-  const maxFreeQty =
-    applications *
-    couponDetails.get_products.reduce((sum, g) => sum + g.quantity, 0);
+  const get_multiplier = couponDetails.get_products?.[0]?.quantity ?? 0;
+
+  logger.info(`get_multiplier: ${get_multiplier}`);
+  const maxFreeQty = applications * get_multiplier;
   console.log(`maxFreeQty: ${maxFreeQty}`);
 
   // Step 5: Collect GET products from cart
@@ -174,11 +175,9 @@ const getApplicableCoupons = async (req, res) => {
       !Array.isArray(cart_items.items) ||
       cart_items.items.length === 0
     ) {
-      return res
-        .status(400)
-        .send({
-          message: "cart is required and must contain at least one item",
-        });
+      return res.status(400).send({
+        message: "cart is required and must contain at least one item",
+      });
     }
 
     for (const item of cart_items.items) {
@@ -354,19 +353,19 @@ const applyCoupon = async (req, res) => {
     const couponResult = await client.query(couponQueries.getCouponById, [
       req.params.id,
     ]);
+    const coupon = couponResult.rows[0];
+    const currentDateStamp = Date.now();
 
     if (!couponResult.rows.length) {
       return res.status(404).send({ error: "Coupon not found" });
     }
-    const coupon = couponResult.rows[0];
-    const currentDateStamp = Date.now();
 
-    // check active
+    //  active check
     if (!coupon.is_active) {
       return res.status(400).send({ error: "Coupon is not active" });
     }
 
-    // check expiry (expiry_at stored as epoch ms)
+    //expiry check
     if (coupon.expiry_at != null && coupon.expiry_at < currentDateStamp) {
       return res.status(400).send({ error: "Coupon has expired" });
     }
@@ -383,7 +382,7 @@ const applyCoupon = async (req, res) => {
 
     return res.status(200).send(result);
   } catch (error) {
-    logger.error(error.message);
+    logger.error(error);
     return res.status(400).json({ error: error.message });
   } finally {
     client.release();
