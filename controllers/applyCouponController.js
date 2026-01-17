@@ -72,7 +72,7 @@ async function handleBxGy(coupon, cartItems) {
   let cartMap = {};
   let discount = 0;
   const couponDetails = coupon.details;
-  // Step 1: Build cart map
+  // Building cart map
   for (const item of cartItems) {
     cartMap[item.product_id] = {
       quantity: item.quantity,
@@ -80,7 +80,6 @@ async function handleBxGy(coupon, cartItems) {
     };
   }
 
-  // Step 2: Calculate total BUY quantity (COMBINATION)
   let totalBuyQty = 0;
 
   for (const buy of couponDetails.buy_products) {
@@ -94,8 +93,8 @@ async function handleBxGy(coupon, cartItems) {
   }
   console.log(`totalBuyQty: ${totalBuyQty}`);
 
-  // Step 3: Calculate applications
-  const groupQty = couponDetails.buy_products[0].quantity; // e.g. Buy 3
+  // Calculate no of applicability
+  const groupQty = couponDetails.buy_products[0].quantity;
   let applications = Math.floor(totalBuyQty / groupQty);
 
   if (couponDetails.repition_limit) {
@@ -106,14 +105,12 @@ async function handleBxGy(coupon, cartItems) {
     return 0;
   }
 
-  // Step 4: Max free quantity allowed
   const get_multiplier = couponDetails.get_products?.[0]?.quantity ?? 0;
 
   logger.info(`get_multiplier: ${get_multiplier}`);
   const maxFreeQty = applications * get_multiplier;
   console.log(`maxFreeQty: ${maxFreeQty}`);
 
-  // Step 5: Collect GET products from cart
   let getCandidates = [];
 
   for (const get of couponDetails.get_products) {
@@ -127,7 +124,7 @@ async function handleBxGy(coupon, cartItems) {
     }
   }
 
-  // Step 6: Sort GET items by price (DESC)
+  //  get higher price item first
   getCandidates.sort((a, b) => b.price - a.price);
   if (getCandidates.length === 0) {
     return 0;
@@ -149,14 +146,7 @@ async function handleBxGy(coupon, cartItems) {
       quantity: freeQty,
     });
   }
-  // return total numeric discount for applicability check
 
-  //   return {
-  //     discount,
-  //     freeItems,
-  //     applications,
-  //     maxFreeQty
-  //   };
   return discount;
 }
 
@@ -192,9 +182,10 @@ const getApplicableCoupons = async (req, res) => {
           .send({ msg: "each item must have a positive numeric quantity" });
       }
     }
+    logger.info(`coupons-List: ${JSON.stringify(coupons.rows)}`);
     const applicableCoupons = await findApplicableCoupons(
       coupons.rows,
-      cart_items
+      cart_items,
     );
 
     return res.status(200).send({ applicable_coupons: applicableCoupons });
@@ -212,7 +203,7 @@ const cloneItems = (items) =>
     total_discount: 0,
   }));
 
-const findItem = (items, productId) =>
+const findItem = async (items, productId) =>
   items.find((i) => i.product_id === productId);
 
 const applyCouponToCart = async (coupon, cart) => {
@@ -238,9 +229,9 @@ const applyCouponToCart = async (coupon, cart) => {
       default:
         throw new Error("Unsupported coupon type");
     }
+    logger.info(`items: ${JSON.stringify(items)}`);
 
     const finalPrice = cartTotal - totalDiscount;
-
     return {
       updated_cart: {
         items,
@@ -260,12 +251,13 @@ const applyCartWise = async (coupon, items, cartTotal) => {
     const { threshold, discount } = coupon.details;
 
     if (cartTotal < threshold) {
-      throw new Error("Coupon not applicable for this cart");
+      throw new Error(
+        "Coupon not applicable for this cart as cart value is less than threshold",
+      );
     }
 
     const totalDiscount = (cartTotal * discount) / 100;
 
-    // Distribute discount proportionally
     for (const item of items) {
       const itemTotal = item.price * item.quantity;
       const itemDiscount = (itemTotal / cartTotal) * totalDiscount;
@@ -280,71 +272,105 @@ const applyCartWise = async (coupon, items, cartTotal) => {
   }
 };
 
-const applyProductWise = (coupon, items) => {
-  const { product_id, discount } = coupon.details;
+const applyProductWise = async (coupon, items) => {
+  try {
+    const { product_id, discount } = coupon.details;
 
-  const item = findItem(items, product_id);
-  if (!item) {
-    throw new Error("Coupon not applicable for this cart");
+    const item = await findItem(items, product_id);
+    if (!item) {
+      throw new Error("Coupon not applicable for this cart");
+    }
+
+    const productTotal = item.price * item.quantity;
+    const totalDiscount = (productTotal * discount) / 100;
+
+    item.total_discount = Number(totalDiscount.toFixed(2));
+
+    return Number(totalDiscount.toFixed(2));
+  } catch (error) {
+    logger.error(error);
+    throw new Error(error);
   }
-
-  const productTotal = item.price * item.quantity;
-  const totalDiscount = (productTotal * discount) / 100;
-
-  item.total_discount = Number(totalDiscount.toFixed(2));
-
-  return Number(totalDiscount.toFixed(2));
 };
 
-const applyBxGy = (coupon, items) => {
-  const { buy_products, get_products, repition_limit } = coupon.details;
+const applyBxGy = async (coupon, items) => {
+  try {
+    const { buy_products, get_products, repition_limit } = coupon.details;
 
-  let cartMap = {};
-  for (const item of items) {
-    cartMap[item.product_id] = item;
-  }
-
-  // Step 1: count total buy qty
-  let totalBuyQty = 0;
-  for (const buy of buy_products) {
-    if (cartMap[buy.product_id]) {
-      totalBuyQty += cartMap[buy.product_id].quantity;
+    let cartMap = {};
+    for (const item of items) {
+      cartMap[item.product_id] = item;
     }
+
+    // counting total buy quantity from buy_products array
+    let totalBuyQty = 0;
+    for (const buy of buy_products) {
+      if (cartMap[buy.product_id]) {
+        totalBuyQty += cartMap[buy.product_id].quantity;
+      }
+    }
+
+    if (totalBuyQty === 0) {
+      throw new Error("Coupon not applicable for these cart items");
+    }
+
+    const groupQty = buy_products[0].quantity;
+    let applications = Math.floor(totalBuyQty / groupQty);
+
+    if (repition_limit) {
+      applications = Math.min(applications, repition_limit);
+    }
+
+    if (applications <= 0) {
+      throw new Error("Coupon not applicable for this cart");
+    }
+
+    let totalDiscount = 0;
+
+    // max availablity of free qty
+    const get_multiplier = get_products?.[0]?.quantity ?? 0;
+    const maxFreeQty = applications * get_multiplier;
+
+    // eligible get products from cart
+    let getCandidates = [];
+    for (const get of get_products) {
+      const cartItem = cartMap[get.product_id];
+      if (cartItem && cartItem.quantity > 0) {
+        getCandidates.push({
+          product_id: get.product_id,
+          quantity: cartItem.quantity,
+          price: cartItem.price,
+        });
+      }
+    }
+
+    // more price free item first
+    getCandidates.sort((a, b) => b.price - a.price);
+
+    if (getCandidates.length === 0) {
+      throw new Error("Coupon not applicable for this cart");
+    }
+
+    let remainingFreeQty = maxFreeQty;
+    for (const candidate of getCandidates) {
+      if (remainingFreeQty <= 0) break;
+
+      const item = cartMap[candidate.product_id];
+      const freeQty = Math.min(candidate.quantity, remainingFreeQty);
+
+      const discount = freeQty * candidate.price;
+
+      item.quantity += freeQty;
+      item.total_discount = (item.total_discount || 0) + discount;
+      totalDiscount += discount;
+      remainingFreeQty -= freeQty;
+    }
+
+    return totalDiscount;
+  } catch (error) {
+    logger.error(error);
+    throw new Error(error);
   }
-
-  if (totalBuyQty === 0) {
-    throw new Error("Coupon not applicable for this cart");
-  }
-
-  const groupQty = buy_products[0].quantity;
-  let applications = Math.floor(totalBuyQty / groupQty);
-
-  if (repition_limit) {
-    applications = Math.min(applications, repition_limit);
-  }
-
-  if (applications <= 0) {
-    throw new Error("Coupon not applicable for this cart");
-  }
-
-  let totalDiscount = 0;
-
-  // Step 2: apply free items (capped by availability)
-  for (const get of get_products) {
-    const item = cartMap[get.product_id];
-    if (!item) continue;
-
-    const expectedFreeQty = get.quantity * applications;
-    const actualFreeQty = Math.min(expectedFreeQty, item.quantity);
-
-    const discount = actualFreeQty * item.price;
-
-    item.quantity += actualFreeQty; // extra free items
-    item.total_discount += discount;
-    totalDiscount += discount;
-  }
-
-  return totalDiscount;
 };
 
 const applyCoupon = async (req, res) => {
